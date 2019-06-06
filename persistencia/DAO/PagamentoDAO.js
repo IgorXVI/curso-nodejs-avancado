@@ -8,9 +8,7 @@ module.exports = class PagamentoDAO {
     }
 
     atualiza(pagamento,callback) {
-        this._connection.query('UPDATE pagamentos SET forma_de_pagamento=?, valor=?, moeda=?, status=?, data=?  WHERE id=?',
-        [pagamento.forma_de_pagamento, pagamento.valor, pagamento.moeda, pagamento.status, pagamento.data, pagamento.id],
-        callback);
+        this._connection.query('UPDATE pagamentos SET status=?  WHERE id=?', [pagamento.status, pagamento.id], callback);
     }
 
     lista(callback){
