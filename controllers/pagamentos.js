@@ -12,13 +12,13 @@ module.exports = (app) => {
 
         console.log("processando pagamento...")
 
-        req.assert("forma_de_pagamento", "Forma de pagamento é obrigatória.").notEmpty()
-        req.assert("valor", "Valor é obrigatório e deve ser um decimal.").notEmpty().isFloat();
-        req.assert("moeda", "Moeda é obrigatória e deve ter 3 caracteres").notEmpty().len(3, 3);
+        req.assert("pagamento.forma_de_pagamento", "Forma de pagamento é obrigatória.").notEmpty()
+        req.assert("pagamento.valor", "Valor é obrigatório e deve ser um decimal.").notEmpty().isFloat();
+        req.assert("pagamento.moeda", "Moeda é obrigatória e deve ter 3 caracteres").notEmpty().len(3, 3);
 
         const errors = req.validationErrors();
         if (errors) {
-            console.log("Erros de validação encontrados");
+            console.log("Erros de do pagamento validação encontrados.");
             res.status(400).send(errors);
             return;
         }
@@ -36,10 +36,26 @@ module.exports = (app) => {
             }
 
             pagamento.id = result.insertId;
-
-            console.log(pagamento.forma_de_pagamento);
+            
             if (pagamento.forma_de_pagamento == "cartao") {
                 const cartao = req.body["cartao"]
+
+                console.log("processando cartao...")
+
+                req.assert("cartao.numero", "Número é obrigatório e deve ter 16 caracteres.").notEmpty().len(16, 16);
+                req.assert("cartao.bandeira", "Bandeira do cartão é obrigatória.").notEmpty();
+                req.assert("cartao.ano_de_expiracao", "Ano de expiração é obrigatório e deve ter 4 caracteres.").notEmpty().len(4, 4);
+                req.assert("cartao.mes_de_expiracao", "Mês de expiração é obrigatório e deve ter 2 caracteres").notEmpty().len(2, 2);
+                req.assert("cartao.cvv", "CVV é obrigatório e deve ter 3 caracteres").notEmpty().len(3, 3);
+
+                const errors = req.validationErrors();
+
+                if (errors) {
+                    console.log("Erros de validação do cartão encontrados.");
+
+                    res.status(400).send(errors);
+                    return;
+                }
 
                 const cartoesClient = new CartoesClient()
                 cartoesClient.autoriza(cartao, (err, request, response, retorno) => {
@@ -52,8 +68,7 @@ module.exports = (app) => {
                     response = {
                         dados_do_pagamanto: pagamento,
                         cartao: retorno,
-                        links: [
-                            {
+                        links: [{
                                 href: "http://localhost:6663/pagamentos/pagamento/" + pagamento.id,
                                 rel: "confirmar",
                                 method: "PUT"
@@ -69,14 +84,12 @@ module.exports = (app) => {
                     res.status(201).json(response);
                     return;
                 })
-            }
-            else {
+            } else {
                 res.location('/pagamentos/pagamento/' + pagamento.id);
 
                 const response = {
                     dados_do_pagamento: pagamento,
-                    links: [
-                        {
+                    links: [{
                             href: "http://localhost:6663/pagamentos/pagamento/" + pagamento.id,
                             rel: "confirmar",
                             method: "PUT"
