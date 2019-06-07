@@ -1,9 +1,9 @@
-const restify = require("restify")
+const restifyClients = require("restify-clients")
 
 module.exports = class CartoesClient {
     constructor(){
-        this._client = restify.createJsonClient({
-            url: 'http://localhost:3000',
+        this._client = restifyClients.createJsonClient({
+            url: 'http://localhost:3001',
             version: '~1.0'
         })
     }

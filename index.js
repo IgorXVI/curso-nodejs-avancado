@@ -1,6 +1,6 @@
 const app = require("./config/custom-express")
-const pagamentosController = require("./controllers/pagamentos")
 
+const pagamentosController = require("./controllers/pagamentos")
 pagamentosController(app)
 
 let porta = 6663

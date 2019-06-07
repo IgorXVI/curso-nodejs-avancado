@@ -1,5 +1,6 @@
 const ConnectionFactory = require("../persistencia/Factory/ConnectionFactory")
 const PagamentoDAO = require("../persistencia/DAO/PagamentoDAO")
+const CartoesClient = require("../servicos/CartoesClient")
 
 module.exports = (app) => {
     app.get("/pagamentos", (req, res) => {
@@ -7,7 +8,7 @@ module.exports = (app) => {
     })
 
     app.post("/pagamentos/pagamento", (req, res) => {
-        const pagamento = req.body
+        const pagamento = req.body["pagamento"]
 
         console.log("processando pagamento...")
 
@@ -34,12 +35,65 @@ module.exports = (app) => {
                 return;
             }
 
-            console.log('pagamento criado: ' + result);
-            res.location('/pagamentos/pagamento/' + result.insertId);
             pagamento.id = result.insertId;
 
-            res.status(201).json(pagamento);
+            console.log(pagamento.forma_de_pagamento);
+            if (pagamento.forma_de_pagamento == "cartao") {
+                const cartao = req.body["cartao"]
+
+                const cartoesClient = new CartoesClient()
+                cartoesClient.autoriza(cartao, (err, request, response, retorno) => {
+                    if (err) {
+                        res.status(400).send(err);
+                        return;
+                    }
+                    res.location('/pagamentos/pagamento/' + pagamento.id);
+
+                    response = {
+                        dados_do_pagamanto: pagamento,
+                        cartao: retorno,
+                        links: [
+                            {
+                                href: "http://localhost:6663/pagamentos/pagamento/" + pagamento.id,
+                                rel: "confirmar",
+                                method: "PUT"
+                            },
+                            {
+                                href: "http://localhost:6663/pagamentos/pagamento/" + pagamento.id,
+                                rel: "cancelar",
+                                method: "DELETE"
+                            }
+                        ]
+                    }
+
+                    res.status(201).json(response);
+                    return;
+                })
+            }
+            else {
+                res.location('/pagamentos/pagamento/' + pagamento.id);
+
+                const response = {
+                    dados_do_pagamento: pagamento,
+                    links: [
+                        {
+                            href: "http://localhost:6663/pagamentos/pagamento/" + pagamento.id,
+                            rel: "confirmar",
+                            method: "PUT"
+                        },
+                        {
+                            href: "http://localhost:6663/pagamentos/pagamento/" + pagamento.id,
+                            rel: "cancelar",
+                            method: "DELETE"
+                        }
+                    ]
+                }
+
+                res.status(201).json(response);
+            }
+
         })
+
     })
 
     app.put("/pagamentos/pagamento/:id", (req, res) => {
@@ -60,7 +114,7 @@ module.exports = (app) => {
                 return;
             }
             console.log('pagamento criado');
-            res.send(pagamento);
+            res.status(202).json(pagamento)
         })
     })
 
@@ -82,9 +136,8 @@ module.exports = (app) => {
                 return;
             }
             console.log('pagamento cancelado')
-            res.status(204).send(pagamento)
+            res.status(204)
         });
     });
-
 
 }
