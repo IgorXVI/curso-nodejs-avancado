@@ -5,7 +5,7 @@ module.exports = class ConnectionFactory {
         return mysql.createConnection({
             host: 'localhost',
             user: 'igor2',
-            password: '@Olocobicho2',
+            password: '',
             database: 'curso-nodejs-avancado'
         });
     }
