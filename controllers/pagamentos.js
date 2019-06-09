@@ -1,16 +1,50 @@
 const ConnectionFactory = require("../persistencia/Factory/ConnectionFactory")
 const PagamentoDAO = require("../persistencia/DAO/PagamentoDAO")
 const CartoesClient = require("../servicos/CartoesClient")
+const MemcachedClient = require("../servicos/MemcachedClient")
+const logger = require("../persistencia/logger")
 
 module.exports = (app) => {
     app.get("/pagamentos", (req, res) => {
         res.send("ok")
     })
 
+    app.get("/pagamentos/pagamento/:id", (req, res) => {
+        const id = req.params.id
+
+        logger.info(`procurando pagamento com id = ${id}`)
+
+        const cache = MemcachedClient()
+        cache.get('pagamento-' + id, function(erro, retorno) {
+            if (erro || !retorno) {
+                logger.info('MISS - chave nao encontrada');
+
+                const connection = ConnectionFactory.create()
+                const pagamentoDAO = new PagamentoDAO(connection)
+
+                pagamentoDAO.buscaPorID(id, (erro, resultado) => {
+                    if (erro) {
+                        logger.info("Erro ao consultar o banco.")
+                        res.status(500).send(erro)
+                        return
+                    }
+
+                    logger.info("Pagamento encontrado.")
+                    res.status(200).json(resultado)
+                })
+            } else {
+                //HIT no cache
+                logger.info('HIT - valor: ' + JSON.stringify(retorno));
+                res.status(200).json(retorno)
+            }
+        });
+
+    })
+
     app.post("/pagamentos/pagamento", (req, res) => {
         const pagamento = req.body["pagamento"]
 
-        console.log("processando pagamento...")
+        logger.info("processando pagamento...")
 
         req.assert("pagamento.forma_de_pagamento", "Forma de pagamento é obrigatória.").notEmpty()
         req.assert("pagamento.valor", "Valor é obrigatório e deve ser um decimal.").notEmpty().isFloat();
@@ -18,7 +52,7 @@ module.exports = (app) => {
 
         const errors = req.validationErrors();
         if (errors) {
-            console.log("Erros de do pagamento validação encontrados.");
+            logger.info("Erros de do pagamento validação encontrados.");
             res.status(400).send(errors);
             return;
         }
@@ -36,11 +70,11 @@ module.exports = (app) => {
             }
 
             pagamento.id = result.insertId;
-            
+
             if (pagamento.forma_de_pagamento == "cartao") {
                 const cartao = req.body["cartao"]
 
-                console.log("processando cartao...")
+                logger.info("processando cartao...")
 
                 req.assert("cartao.numero", "Número é obrigatório e deve ter 16 caracteres.").notEmpty().len(16, 16);
                 req.assert("cartao.bandeira", "Bandeira do cartão é obrigatória.").notEmpty();
@@ -51,7 +85,7 @@ module.exports = (app) => {
                 const errors = req.validationErrors();
 
                 if (errors) {
-                    console.log("Erros de validação do cartão encontrados.");
+                    logger.info("Erros de validação do cartão encontrados.");
 
                     res.status(400).send(errors);
                     return;
@@ -82,7 +116,6 @@ module.exports = (app) => {
                     }
 
                     res.status(201).json(response);
-                    return;
                 })
             } else {
                 res.location('/pagamentos/pagamento/' + pagamento.id);
@@ -105,6 +138,11 @@ module.exports = (app) => {
                 res.status(201).json(response);
             }
 
+            const cache = MemcachedClient()
+            cache.set('pagamento-' + pagamento.id, result, 100000, function (err) {
+                logger.info('nova chave: pagamento-' + pagamento.id)
+            });
+
         })
 
     })
@@ -113,7 +151,7 @@ module.exports = (app) => {
         const pagamento = {};
         const id = req.params.id;
 
-        console.log("processando pagamento...")
+        logger.info("processando pagamento...")
 
         pagamento.id = id;
         pagamento.status = 'CONFIRMADO';
@@ -126,7 +164,7 @@ module.exports = (app) => {
                 res.status(500).send(erro);
                 return;
             }
-            console.log('pagamento criado');
+            logger.info('pagamento criado');
             res.status(202).json(pagamento)
         })
     })
@@ -135,7 +173,7 @@ module.exports = (app) => {
         const pagamento = {}
         const id = req.params.id
 
-        console.log("processando pagamento...")
+        logger.info("processando pagamento...")
 
         pagamento.id = id
         pagamento.status = 'CANCELADO'
@@ -148,7 +186,7 @@ module.exports = (app) => {
                 res.status(500).send(erro)
                 return;
             }
-            console.log('pagamento cancelado')
+            logger.info('pagamento cancelado')
             res.status(204)
         });
     });

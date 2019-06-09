@@ -4,8 +4,8 @@ module.exports = class ConnectionFactory {
     static create() {
         return mysql.createConnection({
             host: 'localhost',
-            user: 'root',
-            password: 'olocobicho',
+            user: 'igor2',
+            password: '@Olocobicho2',
             database: 'curso-nodejs-avancado'
         });
     }
