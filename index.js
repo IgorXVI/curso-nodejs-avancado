@@ -1,5 +1,8 @@
 const app = require("./config/custom-express")
 
+const userController = require("./controllers/user")
+userController(app)
+
 const pagamentosController = require("./controllers/pagamentos")
 pagamentosController(app)
 

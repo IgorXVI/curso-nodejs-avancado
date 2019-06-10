@@ -5,7 +5,7 @@ if(!fs.existsSync("logs")){
     fs.mkdirSync("logs")
 }
 
-const logger = new winston.Logger({
+const logger = winston.createLogger({
     transports:[
         new winston.transports.File({
             level: "info",

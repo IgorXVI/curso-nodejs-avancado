@@ -1,15 +1,22 @@
-const ConnectionFactory = require("../persistencia/Factory/ConnectionFactory")
-const PagamentoDAO = require("../persistencia/DAO/PagamentoDAO")
-const CartoesClient = require("../servicos/CartoesClient")
-const MemcachedClient = require("../servicos/MemcachedClient")
+const ConnectionFactory = require("../persistencia/ConnectionFactory")
+const PagamentoDAO = require("../persistencia/PagamentoDAO")
 const logger = require("../persistencia/logger")
 
+const CartoesClient = require("../servicos/CartoesClient")
+const MemcachedClient = require("../servicos/MemcachedClient")
+
 module.exports = (app) => {
+
     app.get("/pagamentos", (req, res) => {
         res.send("ok")
     })
 
     app.get("/pagamentos/pagamento/:id", (req, res) => {
+        if(!req.isloggedin){
+            res.status(400).send("é necessario estar logado")
+            return
+        }
+
         const id = req.params.id
 
         logger.info(`procurando pagamento com id = ${id}`)
